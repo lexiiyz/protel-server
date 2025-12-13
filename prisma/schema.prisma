@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Pekerja {
+  id_pekerja   String   @id
+  nama          String
+  nomor_vest    Int
+  jabatan_id    Int
+  foto_wajah    String?
+  is_active     Boolean  @default(true)
+  Jabatan       Jabatan  @relation(fields: [jabatan_id], references: [id])
+  LogAbsensi    LogAbsensi[]
+}
+
+model LogAbsensi {
+  id          Int      @id @default(autoincrement())
+  waktu_absen DateTime @default(now())
+  
+  pekerja_id  String
+  confidence  Float
+  apd_lengkap Boolean  @default(false)
+  is_manual   Boolean  @default(false)
+  ocr_result  String?
+
+  // --- FIELD BARU: BUKTI FOTO ---
+  foto_wajah    String?  @db.Text // Path file foto wajah
+  foto_helm     String?  @db.Text // Path file foto helm
+  foto_vest     String?  @db.Text
+  foto_gloves   String?  @db.Text
+  foto_glasses  String?  @db.Text
+  foto_boots    String?  @db.Text
+  foto_mask     String?  @db.Text
+  foto_vest_number String? @db.Text
+
+  // Status Detail (Boolean) - Tetap ada untuk query cepat
+  helm_ok     Boolean @default(false)
+  vest_ok     Boolean @default(false)
+  gloves_ok   Boolean @default(false)
+  glasses_ok  Boolean @default(false)
+  boots_ok    Boolean @default(false)
+  mask_ok     Boolean @default(false)
+  ocr_match   Boolean @default(false)
+
+  Pekerja     Pekerja  @relation(fields: [pekerja_id], references: [id_pekerja])
+}
+
+model Jabatan {
+  id           Int        @id @default(autoincrement())
+  nama_jabatan String
+  Pekerja      Pekerja[]
+}
+
+model Camera {
+  id        Int      @id @default(autoincrement())
+  name      String
+  location  String?
+  type      String   @default("RTSP") // "RTSP" atau "WEBCAM"
+  ipAddress String?  // Optional kalau tipe WEBCAM
+  username  String?
+  password  String?
+  channel   String?
+  status    String?  @default("Offline")
+  wsPort    Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ViolationLog ViolationLog[]
+}
+
+// ... model lainnya tetap sama
+
+model ViolationLog {
+  id          Int      @id @default(autoincrement())
+  camera_id   Int
+  timestamp   DateTime @default(now())
+  details     String   @db.Text
+  image_path  String?  @db.Text 
+  vest_number String?  @default("None") 
+  worker_name String?  @default("Unknown") 
+  
+  // TAMBAHKAN 'onDelete: Cascade' DISINI
+  Camera      Camera   @relation(fields: [camera_id], references: [id], onDelete: Cascade)
+}
